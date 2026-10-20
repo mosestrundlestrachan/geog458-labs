@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Earthquakes of the Past 30 Days</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+
+        /* Layout of the legend panel. */
+        #legend {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 110px;
+            background: #fff;
+            margin-right: 20px;
+            margin-bottom: 40px;
+            padding: 10px 20px 10px 10px;
+            border-radius: 3px;
+            text-align: center;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .break {
+            position: relative;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dot {
+            display: inline-block;
+            margin-top: 5px;
+            border-radius: 50%;
+            opacity: 0.6;
+        }
+
+        .dot-label {
+            position: absolute;
+            top: 0;
+            right: 0;
+            font-style: italic;
+        }
+
+        #legend a {
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="legend"></div>
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoibW9zZXN0cnVuZGxlc3RyYWNoYW4iLCJhIjoiY211enZ5aTQ4MDA1NDJ5b3I1bDBlNW5rNSJ9.GztejGQJULxM18icCgEHIw';
+
+        const mymap = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/satellite-v9', // satellite basemap for a natural-event map
+            projection: 'globe',                          // globe projection so the fog reads as atmosphere
+            center: [-96, 37.8],
+            zoom: 1
+        });
+
+        // Atmospheric depth on the globe. style.load happens once the style is ready.
+        mymap.on('style.load', () => {
+            mymap.setFog({});
+        });
+
+        // Data source, layer, and interaction wait for the map itself to load.
+        mymap.on('load', () => {
+            // USGS "all earthquakes, past 30 days" feed, loaded at runtime with addSource().
+            // The feed is re-requested on every page load, so each reload is a fresh snapshot.
+            mymap.addSource('earthquakes', {
+                type: 'geojson',
+                data: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson'
+            });
+
+            mymap.addLayer({
+                id: 'earthquakes-layer',
+                type: 'circle',
+                source: 'earthquakes',
+                paint: {
+
+                    //Yes the 1.4 px is a diameter, not a radius. 
+                    // The first stop in the scale is magnitude 1 with radius 0.7 px, so the smallest circle is 1.4 px across. 
+                    // That is below the 1 px white so the faintest tremors read as a stroke with a speck of 
+                    // color inside rather than as a filled dot. Anything under magnitude adds to that same floor, and so 
+                    // does any feature whose mag is missing or negative, since to-number falls back to 0.
+
+                    'circle-radius': [
+                        'interpolate', ['linear'],
+                        ['to-number', ['get', 'mag'], 0],
+                        1,    0.7,
+                        1.5,  2,
+                        2,    4,
+                        2.5,  5,
+                        3,    6,
+                        3.5,  7,
+                        4.5,  9,
+                        6.5,  15,
+                        8.5,  17,
+                        10.5, 20
+                    ],
+
+                    //Color uses the ColorBrewer's sequential OrRd ramp with pale cream at the magnitude 1 and dark red at 8.5. 
+                    // A black stop is at 10.5 for headroom. The sequential theme fits because magnitude is ordered and 
+                    // one-directional without an important midpoint. The ranking survives without color because it gets darker as 
+                    // magnitude falls. This also reinforces the size channel. 
+
+                    'circle-color': [
+                        'interpolate', ['linear'],
+                        ['to-number', ['get', 'mag'], 0],
+                        1,    '#fff7ec',
+                        1.5,  '#fee8c8',
+                        2,    '#fdd49e',
+                        2.5,  '#fdbb84',
+                        3,    '#fc8d59',
+                        3.5,  '#ef6548',
+                        4.5,  '#d7301f',
+                        6.5,  '#b30000',
+                        8.5,  '#7f0000',
+                        10.5, '#000000'
+                    ],
+                    'circle-stroke-width': 1,
+                    'circle-stroke-color': 'white',
+                    // Matches the legend's opacity: 0.6 so symbol and sample look the same.
+                    'circle-opacity': 0.6
+                }
+            });
+
+            // Click an earthquake circle to view its magnitude.
+            mymap.on('click', 'earthquakes-layer', (event) => {
+                const feature = event.features[0];
+                const coordinates = feature.geometry.coordinates.slice(0, 2);
+
+                new mapboxgl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML(`<strong>Magnitude:</strong> ${feature.properties.mag}`)
+                    .addTo(mymap);
+            });
+
+            // Cursor feedback so the circles read as clickable.
+            mymap.on('mouseenter', 'earthquakes-layer', () => {
+                mymap.getCanvas().style.cursor = 'pointer';
+            });
+            mymap.on('mouseleave', 'earthquakes-layer', () => {
+                mymap.getCanvas().style.cursor = '';
+            });
+        });
+
+        // Anchor the legend to the HTML element with id="legend".
+        const legend = document.getElementById('legend');
+        const grades = [2, 4.5, 8.5];
+        const radii = [4, 9, 17];                               // same radii as the map's stops
+        const colors = ['#fdd49e', '#d7301f', '#7f0000'];       // same colors as the map's stops
+        const labels = ['<strong>Magnitude</strong>'];
+
+        for (let i = 0; i < grades.length; i++) {
+            const value = grades[i];
+            // CSS width/height is a full diameter; circle-radius is half of it.
+            const diameter = 2 * radii[i];
+
+            labels.push(
+                '<p class="break"><i class="dot" style="background:' + colors[i] +
+                '; width:' + diameter + 'px; height:' + diameter +
+                'px;"></i> <span class="dot-label" style="top:' +
+                diameter / 2 + 'px;">' + value + '</span></p>'
+            );
+        }
+
+        const source =
+            '<p style="text-align:right; font-size:10pt;">Source: ' +
+            '<a href="https://earthquake.usgs.gov/earthquakes/">USGS</a></p>';
+
+        legend.innerHTML = labels.join('') + source;
+    </script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>The World's Megacities</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+
+        /* Map title, anchored across the top of the map. */
+        #title {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1;
+            background: rgba(10, 14, 28, 0.82);
+            color: #ffffcc;
+            padding: 12px 18px 14px 18px;
+            text-align: center;
+        }
+        #title h1 {
+            margin: 0;
+            font-size: 20pt;
+            letter-spacing: 0.04em;
+        }
+        #title p {
+            margin: 4px 0 0 0;
+            font-size: 10pt;
+            color: #cfd8e8;
+        }
+
+        /* Layout of the legend panel. */
+        #legend {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            z-index: 1;
+            width: 170px;
+            background: rgba(10, 14, 28, 0.88);
+            color: #e8edf6;
+            margin-right: 20px;
+            margin-bottom: 40px;
+            padding: 10px 14px 10px 14px;
+            border-radius: 3px;
+            font-size: 9.5pt;
+        }
+        #legend .legend-title {
+            display: block;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        /* Each row for a population class. */
+        .break {
+            position: relative;
+            margin: 0;
+            padding: 0;
+            height: 36px;
+        }
+
+        /* The circular symbol, centered in a fixed-width gutter. */
+        .dot {
+            display: inline-block;
+            border-radius: 50%;
+            opacity: 0.85;
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Label next to the symbol. */
+        .dot-label {
+            position: absolute;
+            left: 46px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-style: italic;
+        }
+
+        /* Link color within the legend. */
+        #legend a { color: #ffffcc; }
+
+        /* Popup restyled for the dark basemap. */
+        .mapboxgl-popup-content {
+            background: #0a0e1c;
+            color: #e8edf6;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .mapboxgl-popup-anchor-top .mapboxgl-popup-tip { border-bottom-color: #0a0e1c; }
+        .mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip { border-top-color: #0a0e1c; }
+        .mapboxgl-popup-anchor-left .mapboxgl-popup-tip { border-right-color: #0a0e1c; }
+        .mapboxgl-popup-anchor-right .mapboxgl-popup-tip { border-left-color: #0a0e1c; }
+        .mapboxgl-popup-close-button { color: #e8edf6; }
+    </style>
+</head>
+<body>
+    <div id="title">
+        <h1>The World's Megacities</h1>
+        <p>1,251 populated places, graduated by population &mdash; the 19 cities above 10 million stand out in pale gold</p>
+    </div>
+    <div id="map"></div>
+    <div id="legend"></div>
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoibW9zZXN0cnVuZGxlc3RyYWNoYW4iLCJhIjoiY211enZ5aTQ4MDA1NDJ5b3I1bDBlNW5rNSJ9.GztejGQJULxM18icCgEHIw';
+
+        // The basemap is Mapbox dark. The population symbols are a light-on-dark sequential ramp, so a dark, 
+        // low-contrast base lets the circles carry the data while coastlines and borders still place each city. 
+        // Satellite or street basemaps would compete with roughly 1,250 overlapping circles.
+
+        const mymap = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v11',
+            // Mercator over globe because the map is a worldwide comparison and 
+            // every city must be visible at once. A globe would hide half the data behind the horizon.
+            projection: 'mercator',
+            center: [10, 25],
+            zoom: 1.1
+        });
+
+        // The field names in the supplied world-cities.geojson are Natural Earth's:
+        // NAME (city name), POP_MAX (the larger of the city-proper / metro estimate),
+        // ADM0NAME (country). 'coalesce' also accepts the lowercase spellings in case
+        // the distributed file was exported with lowercased keys.
+        const popField = ['to-number', ['coalesce', ['get', 'POP_MAX'], ['get', 'pop_max'], 0], 0];
+        const nameField = ['coalesce', ['get', 'NAME'], ['get', 'name'], 'Unknown'];
+
+        mymap.on('load', () => {
+            mymap.addSource('population', {
+                type: 'geojson',
+                data: 'data/world-cities.geojson'
+            });
+
+            mymap.addLayer({
+                id: 'population-layer',
+                type: 'circle',
+                source: 'population',
+                paint: {
+                    
+                    // Five classes, one radius per class. The radiuses are set so that circle area is proportional 
+                    // to each class's midpoint population. This means that the radius scales with the square root 
+                    // of population as opposed to the population itself. So, area reads as relative and the megacities 
+                    // class is the biggest on the map. 
+                    
+                    'circle-radius': [
+                        'step', popField,
+                        2,                  // below the first break
+                        500000,    3.5,
+                        1000000,   6.5,
+                        5000000,  10.5,
+                        10000000, 16
+                    ],
+                    // The breaks are manual and population is heavily skewed right here with a median 
+                    // pop at 447,000 and Tokyo at 35,676,000. Equal interval and quantiles would dump 
+                    // almost every city into one class. The top break is the UN threshold for a megacity 
+                    // at the 10,000,000 mark. Colors are ColorBrewer YIGnBu reversed, so lightness rises with population. 
+                    'circle-color': [
+                        'step', popField,
+                        '#253494',
+                        500000,   '#2c7fb8',
+                        1000000,  '#41b6c4',
+                        5000000,  '#a1dab4',
+                        10000000, '#ffffcc'
+                    ],
+                    // Only the megacity class gets a white ring. 
+                    // Size, color and outline all point the same way, so the map’s claim 
+                    // survives even where circles overlap.
+                    'circle-stroke-width': ['step', popField, 0.4, 10000000, 1.6],
+                    'circle-stroke-color': ['step', popField, '#0a0e1c', 10000000, '#ffffff'],
+                    // Opacity is 0.85 so it matches the legend samples. THis makes a swatch and a mapped city look alike. 
+                    // The transparency also lets dense clusters in Europe and east Asia read as clusters 
+                    // rather than one solid blob.
+                    'circle-opacity': 0.85
+                }
+            });
+
+            // Draw the biggest cities last so megacities are never hidden under smaller ones.
+            // Sorting on the same population field keeps the key visual claim readable.
+            mymap.setLayoutProperty('population-layer', 'circle-sort-key', popField);
+
+            // Click a city to view its name and population.
+            mymap.on('click', 'population-layer', (event) => {
+                const feature = event.features[0];
+                const coordinates = feature.geometry.coordinates.slice(0, 2);
+                const props = feature.properties;
+
+                const cityName = props.NAME ?? props.name ?? 'Unknown';
+                const country = props.ADM0NAME ?? props.adm0name ?? '';
+                const population = Number(props.POP_MAX ?? props.pop_max);
+                // toLocaleString adds thousands separators: 35676000 -> 35,676,000
+                const populationText = Number.isFinite(population)
+                    ? population.toLocaleString('en-US')
+                    : 'no data';
+
+                new mapboxgl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML(
+                        `<strong>${cityName}</strong>` +
+                        (country ? `<br>${country}` : '') +
+                        `<br><strong>Population:</strong> ${populationText}`
+                    )
+                    .addTo(mymap);
+            });
+
+            mymap.on('mouseenter', 'population-layer', () => {
+                mymap.getCanvas().style.cursor = 'pointer';
+            });
+            mymap.on('mouseleave', 'population-layer', () => {
+                mymap.getCanvas().style.cursor = '';
+            });
+        });
+
+        mymap.addControl(new mapboxgl.NavigationControl());
+
+        // ---- LEGEND -------------------------------------------------------------------
+        // Values, colors and radii below are copied from the step expressions above, so the
+        // legend and the map cannot drift apart. CSS width/height is a full diameter, while
+        // circle-radius is half of it, hence diameter = 2 x radius.
+        const legend = document.getElementById('legend');
+        const classLabels = [
+            'under 500,000',
+            '500,000 - 1 million',
+            '1 - 5 million',
+            '5 - 10 million',
+            '10 million + (megacity)'
+        ];
+        const radii = [2, 3.5, 6.5, 10.5, 16];
+        const colors = ['#253494', '#2c7fb8', '#41b6c4', '#a1dab4', '#ffffcc'];
+        const labels = ['<strong class="legend-title">City population</strong>'];
+
+        for (let i = 0; i < classLabels.length; i++) {
+            const diameter = 2 * radii[i];
+            // The top class carries the same white ring it has on the map.
+            const ring = i === classLabels.length - 1
+                ? 'border: 1.6px solid #ffffff;'
+                : '';
+
+            labels.push(
+                '<p class="break"><i class="dot" style="background:' + colors[i] +
+                '; width:' + diameter + 'px; height:' + diameter + 'px;' + ring +
+                '"></i> <span class="dot-label">' + classLabels[i] + '</span></p>'
+            );
+        }
+
+        const source =
+            '<p style="text-align:right; font-size:8.5pt; margin:6px 0 0 0;">Source: ' +
+            '<a href="https://www.naturalearthdata.com/downloads/50m-cultural-vectors/50m-populated-places/">Natural Earth</a></p>';
+
+        legend.innerHTML = labels.join('') + source;
+    </script>
+</body>
+</html>
