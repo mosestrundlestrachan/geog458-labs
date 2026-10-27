@@ -1,13 +1,13 @@
-# Lab 3 — Two web maps, four local tile pyramids
+# Lab 3: Two web maps, four local tile pyramids
 
-Moses Trundle Strachan — GEOG 458
+Moses Trundle Strachan, GEOG 458
 
 Two interactive maps, each combining a Mapbox-derived basemap, a thematic raster,
 and related vector data. All raster content is served as local PNG tile pyramids
 rendered ahead of time; the pages request no live map service and need no Mapbox
 token. Only the MapLibre GL JS library and stylesheet load from a CDN.
 
-## Map 1 (guided) — Puget Sound PM2.5
+## Map 1 (guided): Puget Sound PM2.5
 
 `mosestrundlestrachan_lab3-1.html`
 
@@ -29,8 +29,8 @@ sites. Full provenance in `data/pm25_source.json`.
 distance weighted surface was computed with distance coefficient P = 2 at a 250 m
 cell size, over the extent of the projected station layer, producing
 `data/pm25_idw.tif` at 135 x 387 cells. Values range 4.100 to 12.099 µg/m³, which
-brackets the station range of 4.1 to 12.1 — inverse distance weighting never
-produces values outside its inputs.
+brackets the station range of 4.1 to 12.1, because inverse distance weighting
+never produces values outside its inputs.
 
 **Symbology.** Five colour stops, linearly interpolated:
 
@@ -49,21 +49,21 @@ basemap shows through. The surface is drawn at 70% opacity in the page, which is
 separate control from the transparency baked into the tiles.
 
 **Basemap.** A Mapbox Light style cloned and adapted in Mapbox Studio. Five
-commercial point-of-interest classes were excluded — `commercial_services`,
-`food_and_drink`, `store_like`, `food_and_drink_stores` and `lodging` — combined
-with AND so that a feature must fall outside all five to remain visible. Schools,
-hospitals and parks were deliberately kept. Road line colour was made
-data-driven on `class`: motorway and motorway_link render at `hsl(220, 5%, 45%)`
-while all other roads keep the light fallback, giving a freeway spine that stays
-readable at both ends of the export range without competing with the thematic
-colours. The same expression was applied to `bridge-simple` and `tunnel-simple`,
-because those are separate layers and recolouring only the surface roads would
-make the freeway flicker light at every bridge and tunnel. `bridge-case-simple`
-was checked and left light on purpose: as a casing beneath a dark deck it
-separates the bridge from the water rather than competing with it. Road widths,
-opacity and all label layers are unchanged.
+commercial point-of-interest classes were excluded: `commercial_services`,
+`food_and_drink`, `store_like`, `food_and_drink_stores` and `lodging`. The five
+conditions are combined with AND, so a feature must fall outside all of them to
+remain visible. Schools, hospitals and parks were deliberately kept. Road line
+colour was made data-driven on `class`: motorway and motorway_link render at
+`hsl(220, 5%, 45%)` while all other roads keep the light fallback, giving a
+freeway spine that stays readable at both ends of the export range without
+competing with the thematic colours. The same expression was applied to
+`bridge-simple` and `tunnel-simple`, because those are separate layers and
+recolouring only the surface roads would make the freeway flicker light at every
+bridge and tunnel. `bridge-case-simple` was checked and left light on purpose:
+as a casing beneath a dark deck it separates the bridge from the water rather
+than competing with it. Road widths, opacity and all label layers are unchanged.
 
-## Map 2 (independent) — Shade and heat in Seattle
+## Map 2 (independent): Shade and heat in Seattle
 
 `mosestrundlestrachan_lab3-2.html`
 
@@ -79,14 +79,14 @@ the Central District, Beacon Hill, Columbia City and Rainier Valley.
 **Sources.** City of Seattle, both from the Seattle GeoData portal: the
 Seattle Tree Canopy 2016–2021 50-acre hexagon layer, and SDOT Trees.
 
-**Processing.** The hexagon layer was clipped to the study area and reprojected to
-EPSG:3857, leaving 735 hexagons. The `MEAN` field — average maximum afternoon
-temperature in degrees Fahrenheit — was rasterized to a 20 m grid, giving a
-613 x 1239 raster with values from 81.9 to 91.0 °F. Tree points were filtered to
-`CURRENT_STATUS = 'INSVC'` and a trunk diameter of 30 inches or more, which reduces
-125,241 trees in the study area to 3,276 mature ones, a quantity a browser can
-draw. Coordinates were rounded to five decimal places and the attributes reduced
-to the fields the popup uses.
+**Processing.** The hexagon layer was clipped to the study area and reprojected
+to EPSG:3857, leaving 735 hexagons. The `MEAN` field, which holds the average
+maximum afternoon temperature in degrees Fahrenheit, was rasterized to a 20 m
+grid, giving a 613 x 1239 raster with values from 81.9 to 91.0 °F. Tree points
+were filtered to `CURRENT_STATUS = 'INSVC'` and a trunk diameter of 30 inches or
+more, which reduces 125,241 trees in the study area to 3,276 mature ones, a
+quantity a browser can draw. Coordinates were rounded to five decimal places and
+the attributes reduced to the fields the popup uses.
 
 **Symbology.** A blue-to-red temperature ramp, chosen to be clearly distinct from
 map 1's yellow-to-red pollution ramp:
@@ -157,7 +157,7 @@ were retrieved directly from the Mapbox Static Tiles API for each published styl
 
 ## Screenshots
 
-### Map 1 — Puget Sound PM2.5
+### Map 1: Puget Sound PM2.5
 
 ![Puget Sound PM2.5 map, showing the interpolated surface, monitoring stations and an open station popup](images/lab3-1-pm25.jpg)
 
@@ -165,7 +165,7 @@ The interpolated surface over the Studio basemap, with the eleven monitoring
 stations drawn on top and one popup open showing a measured value. The darker
 freeway network stays readable through the thematic colours.
 
-### Map 2 — Shade and heat in Seattle
+### Map 2: Shade and heat in Seattle
 
 ![Seattle canopy and heat map, showing hexagon temperature shading and mature street trees](images/lab3-2-canopy-heat.jpg)
 
