@@ -66,11 +66,95 @@
     });
 
     map.on('load', () => {
-      // Step 2: insert the basemap tile code here.
+      map.addSource('basemap-tiles', {
+        type: 'raster',
+        tiles: ['assets/mapbox-guided/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        scheme: 'xyz',
+        minzoom: 8,
+        maxzoom: 12,
+        bounds: [-122.75, 47.10, -122.05, 48.15],
+        attribution: '© Mapbox © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      });
+      map.addLayer({
+        id: 'basemap',
+        type: 'raster',
+        source: 'basemap-tiles',
+        paint: { 'raster-opacity': 1, 'raster-fade-duration': 0 }
+      });
 
-      // Step 3: insert the interpolation tile code here.
+      document.getElementById('status').textContent =
+        'Step 2: check your Studio basemap; pan and zoom.';
 
-      // Step 4: insert the station and popup code here.
+      map.addSource('pm25-tiles', {
+        type: 'raster',
+        tiles: ['assets/pm25-guided/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        scheme: 'xyz',
+        minzoom: 8,
+        maxzoom: 12,
+        bounds: [-122.75, 47.10, -122.05, 48.15],
+        attribution: 'PM2.5: U.S. EPA AirData, 2025-07-05; IDW and map by Moses Trundle Strachan'
+      });
+      map.addLayer({
+        id: 'pm25-surface',
+        type: 'raster',
+        source: 'pm25-tiles',
+        paint: { 'raster-opacity': 0.7, 'raster-fade-duration': 0 }
+      });
+
+      document.getElementById('surface-control').hidden = false;
+      document.getElementById('legend').hidden = false;
+      document.getElementById('show-surface').addEventListener('change', (event) => {
+        map.setLayoutProperty('pm25-surface', 'visibility',
+          event.target.checked ? 'visible' : 'none');
+        document.getElementById('legend').hidden = !event.target.checked;
+      });
+      document.getElementById('status').textContent =
+        'Step 3: toggle the interpolation to compare it with the basemap.';
+
+      map.addSource('station-data', {
+        type: 'geojson',
+        data: 'data/pm25_stations.geojson'
+      });
+      map.addLayer({
+        id: 'stations',
+        type: 'circle',
+        source: 'station-data',
+        paint: {
+          'circle-radius': 6,
+          'circle-color': '#18364d',
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 2
+        }
+      });
+
+      map.on('click', 'stations', (event) => {
+        const feature = event.features[0];
+        const station = feature.properties;
+        new maplibregl.Popup()
+          .setLngLat(feature.geometry.coordinates)
+          .setText([
+            station.station_name,
+            'Measured PM2.5: ' + station.pm25 + ' ' + station.units,
+            'Date: ' + station.date,
+            'Station ID: ' + station.station_id
+          ].join('\n'))
+          .addTo(map);
+      });
+      map.on('mouseenter', 'stations', () => {
+        map.getCanvas().style.cursor = 'pointer';
+      });
+      map.on('mouseleave', 'stations', () => {
+        map.getCanvas().style.cursor = '';
+      });
+      document.getElementById('station-control').hidden = false;
+      document.getElementById('show-stations').addEventListener('change', (event) => {
+        map.setLayoutProperty('stations', 'visibility',
+          event.target.checked ? 'visible' : 'none');
+      });
+      document.getElementById('status').textContent =
+        'Step 4: click a station to read its measured value.';
     });
   </script>
 </body>

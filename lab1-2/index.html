@@ -14,7 +14,7 @@
 <body>
    <div id='map'></div>
    <script>
-      mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
+      mapboxgl.accessToken = 'pk.eyJ1IjoibW9zZXN0cnVuZGxlc3RyYWNoYW4iLCJhIjoiY211enZ5aTQ4MDA1NDJ5b3I1bDBlNW5rNSJ9.GztejGQJULxM18icCgEHIw';
       const mymap = new mapboxgl.Map({
              container: 'map',
              style: 'mapbox://styles/mapbox/standard',
@@ -24,8 +24,8 @@
           });
 
       mymap.on('style.load', () => {
-         mymap.setConfigProperty('basemap', 'lightPreset', 'dusk');
-         mymap.setConfigProperty('basemap', 'showPointOfInterestLabels', true);
+         mymap.setConfigProperty('basemap', 'lightPreset', 'dusk'); //setting the light preset to dusk
+         mymap.setConfigProperty('basemap', 'showPointOfInterestLabels', true); //showing point of interest labels on the map
          mymap.setConfigProperty('basemap', 'showTransitLabels', true); //showing transit labels on the map
          mymap.setConfigProperty('basemap', 'show3dObjects', true); //showing 3D objects on the map
          mymap.addControl(new mapboxgl.FullscreenControl()); //adding a fullscreen control to the map

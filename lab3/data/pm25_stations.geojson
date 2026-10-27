@@ -1,0 +1,236 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.319722,
+          47.597222
+        ]
+      },
+      "properties": {
+        "station_id": "53-033-0030",
+        "station_name": "Seattle-10th & Weller",
+        "pm25": 9.2,
+        "date": "2025-07-05",
+        "units": "µg/m³",
+        "county": "King",
+        "poc": 5,
+        "sample_duration": "24-HR BLK AVG",
+        "observation_percent": 100.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.3111,
+          47.4785
+        ]
+      },
+      "properties": {
+        "station_id": "53-033-0040",
+        "station_name": "SeaTac-Sunset Park",
+        "pm25": 5.7,
+        "date": "2025-07-05",
+        "units": "µg/m³",
+        "county": "King",
+        "poc": 5,
+        "sample_duration": "24-HR BLK AVG",
+        "observation_percent": 100.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.338265,
+          47.55975
+        ]
+      },
+      "properties": {
+        "station_id": "53-033-0057",
+        "station_name": "SEATTLE - DUWAMISH",
+        "pm25": 7.2,
+        "date": "2025-07-05",
+        "units": "µg/m³",
+        "county": "King",
+        "poc": 5,
+        "sample_duration": "24-HR BLK AVG",
+        "observation_percent": 100.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.278385,
+          47.498535
+        ]
+      },
+      "properties": {
+        "station_id": "53-033-0069",
+        "station_name": "Tukwila Allentown",
+        "pm25": 4.8,
+        "date": "2025-07-05",
+        "units": "µg/m³",
+        "county": "King",
+        "poc": 5,
+        "sample_duration": "24-HR BLK AVG",
+        "observation_percent": 100.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.308628,
+          47.568236
+        ]
+      },
+      "properties": {
+        "station_id": "53-033-0080",
+        "station_name": "SEATTLE - BEACON HILL",
+        "pm25": 8.7,
+        "date": "2025-07-05",
+        "units": "µg/m³",
+        "county": "King",
+        "poc": 8,
+        "sample_duration": "24-HR BLK AVG",
+        "observation_percent": 100.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.627397,
+          47.592675
+        ]
+      },
+      "properties": {
+        "station_id": "53-035-0007",
+        "station_name": "Bremerton-Spruce Ave",
+        "pm25": 5.7,
+        "date": "2025-07-05",
+        "units": "µg/m³",
+        "county": "Kitsap",
+        "poc": 5,
+        "sample_duration": "24-HR BLK AVG",
+        "observation_percent": 100.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.46256,
+          47.22634
+        ]
+      },
+      "properties": {
+        "station_id": "53-053-0024",
+        "station_name": "Tacoma-S 36th St",
+        "pm25": 5.7,
+        "date": "2025-07-05",
+        "units": "µg/m³",
+        "county": "Pierce",
+        "poc": 5,
+        "sample_duration": "24-HR BLK AVG",
+        "observation_percent": 100.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.4517,
+          47.1864
+        ]
+      },
+      "properties": {
+        "station_id": "53-053-0029",
+        "station_name": "TACOMA - L STREET",
+        "pm25": 4.2,
+        "date": "2025-07-05",
+        "units": "µg/m³",
+        "county": "Pierce",
+        "poc": 5,
+        "sample_duration": "24-HR BLK AVG",
+        "observation_percent": 100.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.3858,
+          47.2656
+        ]
+      },
+      "properties": {
+        "station_id": "53-053-0031",
+        "station_name": "TACOMA - ALEXANDER AVE",
+        "pm25": 4.1,
+        "date": "2025-07-05",
+        "units": "µg/m³",
+        "county": "Pierce",
+        "poc": 5,
+        "sample_duration": "24-HR BLK AVG",
+        "observation_percent": 100.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.269722,
+          47.893611
+        ]
+      },
+      "properties": {
+        "station_id": "53-061-0022",
+        "station_name": "Everett-Beverly Park Rd",
+        "pm25": 7.8,
+        "date": "2025-07-05",
+        "units": "µg/m³",
+        "county": "Snohomish",
+        "poc": 5,
+        "sample_duration": "24-HR BLK AVG",
+        "observation_percent": 100.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.171529,
+          48.054315
+        ]
+      },
+      "properties": {
+        "station_id": "53-061-1007",
+        "station_name": "MARYSVILLE - 7TH AVE (Marysville Junior High)",
+        "pm25": 12.1,
+        "date": "2025-07-05",
+        "units": "µg/m³",
+        "county": "Snohomish",
+        "poc": 5,
+        "sample_duration": "24-HR BLK AVG",
+        "observation_percent": 100.0
+      }
+    }
+  ]
+}

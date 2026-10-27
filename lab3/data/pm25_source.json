@@ -1,0 +1,35 @@
+{
+  "source": "U.S. EPA AirData / AQS",
+  "download_url": "https://aqs.epa.gov/aqsweb/airdata/daily_88101_2025.zip",
+  "documentation": "https://aqs.epa.gov/aqsweb/airdata/FileFormats.html",
+  "downloaded": "2026-10-18",
+  "source_sha256": "cc8cb80bcc0317705202d12a472918438b8bee60316f54777d6f748c58ac2661",
+  "parameter_code": "88101",
+  "date_local": "2025-07-05",
+  "selection": {
+    "state_code": "53",
+    "longitude": [
+      -122.8,
+      -121.7
+    ],
+    "latitude": [
+      47.0,
+      48.2
+    ],
+    "sample_duration": "24-HR BLK AVG",
+    "pollutant_standard": "PM25 24-hour 2012",
+    "event_type": "None",
+    "minimum_observation_percent": 75,
+    "minimum_pm25": 0
+  },
+  "deduplication": "One row per state-county-site. Choose the lowest eligible numeric POC if several instruments remain. Do not average instruments.",
+  "value": "Arithmetic Mean, in source units Micrograms/cubic meter (LC). pm25 is a measured daily summary, not AQI.",
+  "station_count": 11,
+  "bounds": [
+    -122.627397,
+    47.1864,
+    -122.171529,
+    48.054315
+  ],
+  "limits": "Historical observations for a teaching exercise. IDW output is a modeled surface, not a measurement at every pixel or an official air-quality forecast."
+}

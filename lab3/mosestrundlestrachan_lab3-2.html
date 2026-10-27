@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lab 3: Seattle Canopy and Afternoon Heat</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.css">
+  <style>
+    body { margin: 0; font: 14px/1.5 Arial, sans-serif; color: #182e3a; }
+    #map { position: absolute; inset: 0; }
+    #panel { position: absolute; top: 12px; left: 12px; padding: 16px;
+      width: 268px; max-width: calc(100% - 100px); background: white;
+      max-height: calc(100% - 80px); overflow: auto; border-radius: 6px; }
+    h1 { margin: 0 0 8px; font-size: 19px; }
+    p { margin: 8px 0; }
+    .ramp { height: 14px; background: linear-gradient(to right,
+      #2c7bb6, #abd9e9, #ffffbf, #fdae61, #d7191c); }
+    .values { display: flex; justify-content: space-between; }
+    .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+      background: #1b7837; border: 2px solid #ffffff; outline: 1px solid #7a7a7a;
+      vertical-align: middle; margin-right: 6px; }
+    .maplibregl-popup-content { white-space: pre-line; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <section id="panel">
+    <h1>Shade and Heat in Seattle</h1>
+    <p>Afternoon heat, tree canopy and mature street trees | City of Seattle</p>
+    <p id="status">Click a tree to read its species and size.</p>
+    <div id="surface-control">
+      <label><input id="show-surface" type="checkbox" checked> Show afternoon heat</label>
+    </div>
+    <div id="tree-control">
+      <label><input id="show-trees" type="checkbox" checked> Show mature trees</label>
+    </div>
+    <div id="legend">
+      <p><strong>Average max afternoon temp (&deg;F)</strong></p>
+      <div class="ramp"></div>
+      <div class="values"><span>82</span><span>86.5</span><span>91</span></div>
+      <p><span class="swatch"></span>Street tree, trunk 30 in or wider.
+        Larger circles mark wider trunks.</p>
+      <p>Heat is a 50-acre hexagon average; trees are individual records.</p>
+    </div>
+  </section>
+
+  <script type="module">
+    import * as maplibregl from 'https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.mjs';
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        sources: {},
+        layers: [{ id: 'background', type: 'background',
+          paint: { 'background-color': '#111417' } }]
+      },
+      center: [-122.315, 47.605],
+      zoom: 12,
+      minZoom: 10,
+      maxZoom: 14,
+      maxBounds: [[-122.37, 47.53], [-122.26, 47.68]]
+    });
+    map.addControl(new maplibregl.NavigationControl());
+    map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }));
+
+    map.on('error', (event) => {
+      document.getElementById('status').textContent =
+        'Load error: check the file path and browser Console.';
+      console.error(event.error);
+    });
+
+    map.on('load', () => {
+      map.addSource('basemap-tiles', {
+        type: 'raster',
+        tiles: ['assets/mapbox-independent/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        scheme: 'xyz',
+        minzoom: 10,
+        maxzoom: 14,
+        bounds: [-122.37, 47.53, -122.26, 47.68],
+        attribution: '© Mapbox © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      });
+      map.addLayer({
+        id: 'basemap',
+        type: 'raster',
+        source: 'basemap-tiles',
+        paint: { 'raster-opacity': 1, 'raster-fade-duration': 0 }
+      });
+
+      map.addSource('heat-tiles', {
+        type: 'raster',
+        tiles: ['assets/canopy-heat/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        scheme: 'xyz',
+        minzoom: 10,
+        maxzoom: 14,
+        bounds: [-122.37, 47.53, -122.26, 47.68],
+        attribution: 'Canopy and afternoon temperature: City of Seattle; map by Moses Trundle Strachan'
+      });
+      map.addLayer({
+        id: 'heat-surface',
+        type: 'raster',
+        source: 'heat-tiles',
+        paint: { 'raster-opacity': 0.62, 'raster-fade-duration': 0 }
+      });
+
+      map.addSource('tree-data', {
+        type: 'geojson',
+        data: 'data/mature_street_trees.geojson'
+      });
+      map.addLayer({
+        id: 'trees',
+        type: 'circle',
+        source: 'tree-data',
+        paint: {
+          'circle-radius': [
+            'interpolate', ['linear'], ['get', 'diameter_in'],
+            30, 3,
+            50, 6,
+            80, 10
+          ],
+          'circle-color': '#1b7837',
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 1.2,
+          'circle-opacity': 0.9
+        }
+      });
+
+      map.on('click', 'trees', (event) => {
+        const feature = event.features[0];
+        const tree = feature.properties;
+        new maplibregl.Popup()
+          .setLngLat(feature.geometry.coordinates)
+          .setText([
+            tree.common_name,
+            tree.scientific_name,
+            'Trunk diameter: ' + tree.diameter_in + ' in',
+            'Condition: ' + tree.condition,
+            'Planted: ' + (tree.planted_year || 'not recorded'),
+            tree.address
+          ].join('\n'))
+          .addTo(map);
+      });
+      map.on('mouseenter', 'trees', () => {
+        map.getCanvas().style.cursor = 'pointer';
+      });
+      map.on('mouseleave', 'trees', () => {
+        map.getCanvas().style.cursor = '';
+      });
+
+      document.getElementById('show-surface').addEventListener('change', (event) => {
+        map.setLayoutProperty('heat-surface', 'visibility',
+          event.target.checked ? 'visible' : 'none');
+      });
+      document.getElementById('show-trees').addEventListener('change', (event) => {
+        map.setLayoutProperty('trees', 'visibility',
+          event.target.checked ? 'visible' : 'none');
+      });
+    });
+  </script>
+</body>
+</html>
