@@ -155,6 +155,26 @@ colour ramps, `gdal2tiles` for the XYZ pyramids) rather than through the QGIS
 graphical interface, using the same parameters the lab specifies. Basemap pyramids
 were retrieved directly from the Mapbox Static Tiles API for each published style.
 
+## Screenshots
+
+### Map 1 — Puget Sound PM2.5
+
+![Puget Sound PM2.5 map, showing the interpolated surface, monitoring stations and an open station popup](images/lab3-1-pm25.jpg)
+
+The interpolated surface over the Studio basemap, with the eleven monitoring
+stations drawn on top and one popup open showing a measured value. The darker
+freeway network stays readable through the thematic colours.
+
+### Map 2 — Shade and heat in Seattle
+
+![Seattle canopy and heat map, showing hexagon temperature shading and mature street trees](images/lab3-2-canopy-heat.jpg)
+
+Afternoon temperature by 50-acre hexagon with mature street trees above it. The
+relationship the map is built to show is visible directly: a red spine of heat
+runs north to south through the industrial flats and the International District
+with very few mature trees on it, while the cooler blue hexagons on Capitol Hill
+and in the Central District are dense with them.
+
 ## Repository structure
 
 ```
@@ -169,6 +189,9 @@ lab3/
 │   ├── pm25_idw.tif
 │   ├── pm25_utm10.gpkg
 │   └── mature_street_trees.geojson
+├── images/
+│   ├── lab3-1-pm25.jpg
+│   └── lab3-2-canopy-heat.jpg
 └── assets/
     ├── mapbox-guided/{z}/{x}/{y}.png
     ├── pm25-guided/{z}/{x}/{y}.png
