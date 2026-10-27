@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lab 3: Puget Sound PM2.5</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.css">
+  <style>
+    body { margin: 0; font: 14px/1.5 Arial, sans-serif; color: #182e3a; }
+    #map { position: absolute; inset: 0; }
+    #panel { position: absolute; top: 12px; left: 12px; padding: 16px;
+      width: 260px; max-width: calc(100% - 100px); background: white;
+      max-height: calc(100% - 80px); overflow: auto; border-radius: 6px; }
+    h1 { margin: 0 0 8px; font-size: 19px; }
+    p { margin: 8px 0; }
+    .ramp { height: 14px; background: linear-gradient(to right,
+      #ffffb2, #fecc5c, #fd8d3c, #f03b20, #bd0026); }
+    .values { display: flex; justify-content: space-between; }
+    .maplibregl-popup-content { white-space: pre-line; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <section id="panel">
+    <h1>Puget Sound PM2.5</h1>
+    <p>July 5, 2025 | U.S. EPA AirData</p>
+    <p id="status">Step 1: map frame ready; add the basemap next.</p>
+    <div id="surface-control" hidden>
+      <label><input id="show-surface" type="checkbox" checked> Show interpolation</label>
+    </div>
+    <div id="station-control" hidden>
+      <label><input id="show-stations" type="checkbox" checked> Show stations</label>
+    </div>
+    <div id="legend" hidden>
+      <p><strong>Estimated PM2.5 (µg/m³)</strong></p>
+      <div class="ramp"></div>
+      <div class="values"><span>4</span><span>9</span><span>14</span></div>
+      <p>IDW estimates between monitors; not AQI.</p>
+    </div>
+  </section>
+
+  <script type="module">
+    import * as maplibregl from 'https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.mjs';
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        sources: {},
+        layers: [{ id: 'background', type: 'background',
+          paint: { 'background-color': '#edf1f0' } }]
+      },
+      center: [-122.3321, 47.6062],
+      zoom: 10,
+      minZoom: 8,
+      maxZoom: 12,
+      maxBounds: [[-122.75, 47.10], [-122.05, 48.15]]
+    });
+    map.addControl(new maplibregl.NavigationControl());
+    map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }));
+
+    map.on('error', (event) => {
+      document.getElementById('status').textContent =
+        'Load error: check the file path and browser Console.';
+      console.error(event.error);
+    });
+
+    map.on('load', () => {
+      // Step 2: insert the basemap tile code here.
+
+      // Step 3: insert the interpolation tile code here.
+
+      // Step 4: insert the station and popup code here.
+    });
+  </script>
+</body>
+</html>
