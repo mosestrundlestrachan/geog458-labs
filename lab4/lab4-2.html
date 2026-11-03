@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lab 4 — Pokemon GO at UW Seattle</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"></script>
+  <!-- jQuery must load before the body script uses $. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
+  <script src="https://npmcdn.com/csv2geojson@latest/csv2geojson.js"></script>
+  <style>
+    body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    .panel { position: absolute; top: 18px; left: 18px; max-width: 330px;
+      max-height: calc(100% - 100px); overflow: auto; margin-right: 60px;
+      padding: 16px; background: #fff; color: #182e3a;
+      border-radius: 4px; box-shadow: 0 2px 12px #0005; }
+    h1 { font-size: 21px; margin: 0 0 12px; }
+    p, #status, #mode-label { font-size: 14px; line-height: 1.4; }
+    #status, #mode-label { margin-top: 12px; }
+    button { padding: 9px 12px; border: 1px solid #665079;
+      background: white; color: #312144; cursor: pointer; }
+    button[aria-pressed="true"] { background: #312144; color: white; }
+    button:disabled { opacity: .45; cursor: wait; }
+    .popup-image { display: block; width: 400px;
+      max-width: calc(100vw - 60px); height: auto; max-height: 65vh;
+      object-fit: contain; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div id="map" aria-label="Map of Pokemon encounters"></div>
+  <aside class="panel">
+    <h1>Pokemon GO encounters at UW Seattle</h1>
+    <div role="group" aria-label="Map view">
+      <button type="button" data-view="points" aria-pressed="true" disabled>Points</button>
+      <button type="button" data-view="heatmap" aria-pressed="false" disabled>Heatmap</button>
+    </div>
+    <!-- Keep each ID exactly once, inside body and before the script. -->
+    <div id="mode-label"></div>
+    <div id="status"></div>
+    <p>Class observations, not a complete survey of all Pokemon.<br>
+      Source: <a href="https://docs.google.com/spreadsheets/d/12rOwVWdC0tXeS-peDuKQ7i9CtUEMnC1QoVJ3QZcZMu8/edit?usp=sharing" target="_blank" rel="noopener">Class Google Sheet</a></p>
+  </aside>
+  <script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoibW9zZXN0cnVuZGxlc3RyYWNoYW4iLCJhIjoiY211enZ5aTQ4MDA1NDJ5b3I1bDBlNW5rNSJ9.GztejGQJULxM18icCgEHIw';
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/dark-v11',
+      projection: 'globe',
+      center: [-122.3078, 47.6553],
+      zoom: 14,
+      minZoom: 10,
+      maxZoom: 19
+    });
+
+    // Register immediately, before requesting CSV. Keep this promise.
+    const mapReady = new Promise(function (resolve) {
+      map.once('load', resolve);
+    });
+    map.addControl(new mapboxgl.FullscreenControl());
+    map.addControl(new mapboxgl.NavigationControl());
+    document.getElementById('mode-label').textContent =
+      'Points: one dot = one encounter. Click for the Pokemon name and photo.';
+    document.getElementById('status').setAttribute('role', 'status');
+    document.getElementById('status').textContent =
+      'Starter ready. Complete Steps 3.2–3.7 to load the class data and enable both views.';
+
+    $(document).ready(function () {
+      document.getElementById('status').textContent = 'Loading class data…';
+      $.ajax({
+        type: 'GET',
+        url: 'https://docs.google.com/spreadsheets/d/12rOwVWdC0tXeS-peDuKQ7i9CtUEMnC1QoVJ3QZcZMu8/gviz/tq?tqx=out:csv&sheet=Sheet1',
+        dataType: 'text',
+        success: function (csvData) { makeGeoJSON(csvData); },
+        error: function () {
+          document.getElementById('status').textContent =
+            'Could not read the class sheet. Check its URL and read access.';
+        }
+      });
+    });
+
+    // This function is outside document.ready and outside addPokemonLayers.
+    function makeGeoJSON(csvData) {
+      csv2geojson.csv2geojson(csvData, {
+        latfield: 'Latitude',
+        lonfield: 'Longitude',
+        delimiter: ','
+      }, function (err, data) {
+        if (err) {
+          console.error(err);
+          document.getElementById('status').textContent =
+            'Check the Latitude and Longitude columns for invalid or blank values.';
+          return;
+        }
+        // Wait for BOTH CSV conversion and the map style, whichever finishes first.
+        mapReady.then(function () {
+          addPokemonLayers(data);
+        });
+      });
+    }
+
+    // Keep this function wrapper. Paste Steps 3.3–3.7 INSIDE it.
+    function addPokemonLayers(data) {
+      map.addSource('pokemon', { type: 'geojson', data: data });
+
+      map.addLayer({
+        id: 'pokemon-heat',
+        type: 'heatmap',
+        source: 'pokemon',
+        layout: { visibility: 'none' },
+        paint: {
+          // No DBH weighting: the default weight is 1 per encounter.
+          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 13, 0.7, 17, 1.9],
+          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 13, 18, 17, 38],
+          'heatmap-color': [
+            'interpolate', ['linear'], ['heatmap-density'],
+            0, 'rgba(26,6,44,0)',
+            0.15, 'rgb(84,39,143)',
+            0.35, 'rgb(165,61,125)',
+            0.55, 'rgb(224,91,86)',
+            0.75, 'rgb(247,148,52)',
+            0.9, 'rgb(254,217,118)',
+            1, 'rgb(255,255,240)'
+          ],
+          'heatmap-opacity': 0.85
+        }
+      });
+
+      map.addLayer({
+        id: 'pokemon-points',
+        type: 'circle',
+        source: 'pokemon',
+        paint: {
+          'circle-radius': 5,
+          'circle-color': 'purple',
+          'circle-stroke-color': 'white',
+          'circle-stroke-width': 1
+        }
+      });
+
+      map.on('click', 'pokemon-points', function (event) {
+        const feature = event.features[0];
+
+        new mapboxgl.Popup({ maxWidth: '440px' })
+          .setLngLat(feature.geometry.coordinates)
+          .setHTML(`
+            <strong>${feature.properties['Pokemon']}</strong>
+            <a href="${feature.properties['Image_Link']}" target="_blank" rel="noopener">
+              <img src="${feature.properties['Image_Link']}"
+                   class="popup-image" alt="Pokemon encounter">
+            </a>
+          `)
+          .addTo(map);
+      });
+
+      document.querySelectorAll('[data-view]').forEach(function (button) {
+        button.disabled = false;
+        button.addEventListener('click', function () {
+          const showPoints = button.dataset.view === 'points';
+          map.setLayoutProperty('pokemon-points', 'visibility', showPoints ? 'visible' : 'none');
+          map.setLayoutProperty('pokemon-heat', 'visibility', showPoints ? 'none' : 'visible');
+          document.querySelectorAll('[data-view]').forEach(function (b) {
+            b.setAttribute('aria-pressed', String(b === button));
+          });
+          document.getElementById('mode-label').textContent = showPoints
+            ? 'Points: one dot = one encounter. Click for the Pokemon name and photo.'
+            : 'Heatmap: relative encounter density. Equal weight per encounter.';
+        });
+      });
+
+      document.getElementById('status').textContent =
+        data.features.length + ' encounters loaded. Reload to request the latest sheet data.';
+    }
+  </script>
+</body>
+</html>
