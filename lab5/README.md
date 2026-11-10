@@ -13,3 +13,5 @@ When interpreting this map we see that traffic peaks at around 4pm PDT with 1,88
 ## Feature proposal
 
 I think this map and the presence of other vessels could improve the WSDOT ferry tracker app. The app is already solid for checking where late ferries are. However, it is quite boring and I think adding in other vessels and information on other vessels would be a nice addition. 
+
+The deck.gl TripsLayer reference (https://deck.gl/docs/api-reference/geo-layers/trips-layer) showed me that every path already carries its own timestamps, so the ferry tracker could animate other vessels the same way this map does without needing any new data.
