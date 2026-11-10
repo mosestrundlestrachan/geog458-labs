@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Puget Sound Vessel Traffic, July 4 2025</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.js"></script>
+  <script src="https://unpkg.com/deck.gl@^9.0.0/dist.min.js"></script>
+  <style>
+    body { margin: 0; font: 14px Arial, sans-serif; background: #101924; }
+    #map { position: absolute; inset: 0; }
+    #panel { position: absolute; top: 16px; left: 16px; max-width: calc(100vw - 64px);
+      padding: 16px; background: #172333; color: white; border-radius: 8px; }
+    h1 { margin: 0 0 12px; font-size: 19px; }
+    p { color: #c0cfdd; font-size: 12px; }
+    label { display: block; margin: 12px 0 6px; }
+    select, button { padding: 8px; border: 1px solid #637487; border-radius: 4px;
+      background: #26394f; color: white; font: inherit; }
+    button { cursor: pointer; margin-left: 6px; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="panel">
+    <h1>Puget Sound Vessel Traffic</h1>
+    <p id="status" role="status">Loading AIS paths...</p>
+    <label for="vessel-type">Vessel type</label>
+    <select id="vessel-type">
+      <option value="passenger" selected>Passenger</option>
+      <option value="tanker">Tanker</option>
+      <option value="cargo">Cargo</option>
+      <option value="other">Other vessels</option>
+    </select>
+    <button id="play-stop" type="button" aria-pressed="true">Stop</button>
+    <p>Data time: <time id="time-display">Loading date/time...</time></p>
+    <label for="time-slider">Data time (Seattle: PDT/PST)</label>
+    <input id="time-slider" type="range" min="0" max="1" value="0" step="1" disabled
+      style="display:block;width:100%;margin:8px 0;accent-color:#fd805d;">
+    <label for="playback-speed">Playback speed (data time per real second)</label>
+    <select id="playback-speed">
+      <option value="300">5 minutes</option>
+      <option value="900" selected>15 minutes (default)</option>
+      <option value="1800">30 minutes</option>
+      <option value="3600">1 hour</option>
+    </select>
+  </div>
+  <script>
+    
+    mapboxgl.accessToken = 'pk.eyJ1IjoibW9zZXN0cnVuZGxlc3RyYWNoYW4iLCJhIjoiY211enZ5aTQ4MDA1NDJ5b3I1bDBlNW5rNSJ9.GztejGQJULxM18icCgEHIw';
+    const map = new mapboxgl.Map({
+      container: 'map', style: 'mapbox://styles/mapbox/dark-v11',
+      center: [-122.45, 47.60], zoom: 8, pitch: 35
+    });
+    const overlay = new deck.MapboxOverlay({layers: []});
+    map.addControl(overlay);
+
+    async function main() {
+      const status = document.getElementById('status');
+      const response = await fetch('./ais_trips.json');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const trips = data.filter(d => d.path.length >= 2);
+      if (!trips.length) throw new Error('No vessel paths found.');
+      let displayedTrips = trips;
+      let playing = true;
+      const startTime = Math.min(...trips.map(d => d.timestamps[0]));
+      const endTime = Math.max(...trips.map(d => d.timestamps.at(-1))) + 3600;
+      let currentTime = Math.min(startTime + 3600, endTime);
+      let previousFrame = null;
+      status.textContent = `${trips.length} paths loaded`;
+
+      const metadataResponse = await fetch('./ais_trips_metadata.json');
+      if (!metadataResponse.ok) throw new Error('Could not load ais_trips_metadata.json.');
+      const metadata = await metadataResponse.json();
+      const timeOrigin = Date.parse(metadata.time_origin_utc);
+      if (!Number.isFinite(timeOrigin)) throw new Error('Invalid time_origin_utc in ais_trips_metadata.json.');
+      const timeDisplay = document.getElementById('time-display');
+      const timeSlider = document.getElementById('time-slider');
+      timeSlider.min = String(startTime);
+      timeSlider.max = String(endTime);
+      timeSlider.disabled = false;
+      const timeFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Los_Angeles',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hourCycle: 'h23', timeZoneName: 'short'
+      });
+
+      function updateTimeUI() {
+        const date = new Date(timeOrigin + Math.floor(currentTime) * 1000);
+        timeDisplay.dateTime = date.toISOString();
+        timeDisplay.textContent = timeFormatter.format(date);
+        timeSlider.value = String(Math.floor(currentTime));
+        timeSlider.setAttribute('aria-valuetext', timeDisplay.textContent);
+      }
+
+      function draw() {
+        overlay.setProps({layers: [new deck.TripsLayer({
+          id: 'ais-trips', data: displayedTrips,
+          getPath: d => d.path,
+          getTimestamps: d => d.timestamps,
+          getColor: [253, 128, 93],
+          widthMinPixels: 3,
+          currentTime: currentTime,
+          trailLength: 3600
+        })]});
+        updateTimeUI();
+      }
+
+      const vesselType = document.getElementById('vessel-type');
+
+      function applyFilter() {
+        displayedTrips = trips.filter(d => {
+          const type = Number(d.type);
+          if (vesselType.value === 'passenger') return type >= 60 && type < 70;
+          if (vesselType.value === 'tanker') return type >= 80 && type < 90;
+          if (vesselType.value === 'cargo') return type >= 70 && type < 80;
+          return !(type >= 60 && type < 90);
+        });
+        status.textContent = `${displayedTrips.length} paths selected`;
+        draw();
+      }
+
+      vesselType.addEventListener('change', applyFilter);
+      applyFilter(); // Apply the default Passenger selection immediately.
+
+      const playStop = document.getElementById('play-stop');
+
+      function setPlaying(value) {
+        playing = value;
+        previousFrame = null;
+        playStop.textContent = playing ? 'Stop' : 'Play';
+        playStop.setAttribute('aria-pressed', String(playing));
+      }
+
+      playStop.addEventListener('click', () => setPlaying(!playing));
+
+      timeSlider.addEventListener('input', () => {
+        setPlaying(false);
+        currentTime = Number(timeSlider.value);
+        draw();
+      });
+
+      const playbackSpeed = document.getElementById('playback-speed');
+      let secondsPerSecond = Number(playbackSpeed.value);
+
+      playbackSpeed.addEventListener('change', () => {
+        secondsPerSecond = Number(playbackSpeed.value);
+      });
+
+      // Advance data time at the selected playback speed.
+      function animate(now) {
+        const elapsed = previousFrame === null ? 0 : Math.min((now - previousFrame) / 1000, 0.2);
+        previousFrame = now;
+        if (playing) {
+          currentTime += elapsed * secondsPerSecond;
+          if (currentTime > endTime) currentTime = startTime;
+          draw();
+        }
+        requestAnimationFrame(animate);
+      }
+      draw();
+      requestAnimationFrame(animate);
+    }
+
+    main().catch(error => {
+      document.getElementById('status').textContent = `Error: ${error.message}. Check your file path and local server.`;
+      console.error(error);
+    });
+  </script>
+</body>
+</html>
