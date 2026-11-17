@@ -113,6 +113,7 @@
     });
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
     map.on('error', function(event) {
+      document.getElementById('status').hidden = false;
       document.getElementById('status').textContent = 'Map error: check the token and connection.';
       console.error(event.error);
     });
@@ -414,8 +415,9 @@
 
         runSearch(false);
         updateDashboard();
-        document.getElementById('status').textContent = counties.length + ' counties loaded.';
+        document.getElementById('status').hidden = true;
       } catch (error) {
+        document.getElementById('status').hidden = false;
         document.getElementById('status').textContent = 'Unable to load dashboard: ' + error.message;
         console.error(error);
       }
