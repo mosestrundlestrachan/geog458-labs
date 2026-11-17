@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lab 6 | Smart Dashboard</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk&display=swap" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; display: grid; grid-template-columns: minmax(330px, 32%) 1fr;
+      font: 14px/1.65 'Space Grotesk', Arial, sans-serif; background: white; color: #111111; }
+    #sidebar { height: 100vh; overflow-y: auto; padding: 36px 32px 48px;
+      background: white; border-right: 1px solid #dddddd; }
+    h1 { margin: 0; font-size: 15px; line-height: 1.3; }
+    h2 { margin: 0; font-size: 15px; }
+    p { margin: 0; }
+    #subtitle { margin-top: 2px; color: #767676; }
+    #intro { margin-top: 28px; }
+    .muted, #status, #search-status, #chart-note { color: #767676; font-size: 12px; line-height: 1.55; }
+    .field-group { margin-top: 32px; }
+    label { display: block; margin-bottom: 10px; font-size: 11px; letter-spacing: 0.08em;
+      text-transform: uppercase; color: #767676; }
+    input, select { width: 100%; padding: 9px 2px; font: inherit; color: #111111;
+      background: white; border: 0; border-bottom: 1px solid #111111; border-radius: 0; }
+    input::placeholder { color: #767676; }
+    #county-filter { position: relative; }
+    #county-options { position: absolute; top: 100%; left: 0; right: 0; z-index: 5;
+      max-height: 232px; overflow-y: auto; background: white; border: 1px solid #111111; border-top: 0; }
+    #county-options button { display: block; width: 100%; padding: 7px 10px; border: 0;
+      color: #111111; background: transparent; text-align: left; font: inherit; cursor: pointer; }
+    #county-options button:hover, #county-options button:focus-visible { background: #f4f4f4; }
+    :focus-visible { outline: 1px solid #111111; outline-offset: 2px; }
+    #readout { margin-top: 36px; padding-top: 28px; border-top: 1px solid #dddddd; }
+    #placename { font-size: 20px; }
+    #readout .muted { margin-top: 4px; }
+    #county-count { margin-top: 14px; font-size: 44px; line-height: 1; }
+    #chart-block { margin-top: 36px; padding-top: 28px; border-top: 1px solid #dddddd; }
+    #county-chart { margin-top: 14px; }
+    #county-chart svg { width: 100%; height: auto; display: block; }
+    #county-chart text { fill: #767676; font-size: 10px; }
+    #county-chart .domain { stroke: none; }
+    #county-chart .tick line { stroke: #dddddd; }
+    #chart-note { margin-top: 10px; }
+    #footnotes { margin-top: 36px; padding-top: 28px; border-top: 1px solid #dddddd; }
+    #status { margin-bottom: 8px; }
+    #map-panel { position: relative; min-width: 0; height: 100vh; color: #111111; }
+    #map { position: absolute; inset: 0; }
+    #legend { position: absolute; right: 20px; bottom: 32px; padding: 16px 18px;
+      background: white; border: 1px solid #dddddd; font-size: 11px; line-height: 1.9; }
+    #legend h2 { margin-bottom: 8px; font-size: 11px; letter-spacing: 0.08em;
+      text-transform: uppercase; color: #767676; }
+    .legend-row { display: flex; align-items: center; gap: 10px; }
+    .swatch { display: inline-block; width: 22px; height: 9px; }
+    .mapboxgl-popup-content { padding: 12px 14px; border-radius: 0; box-shadow: none;
+      border: 1px solid #111111; font: 12px/1.6 'Space Grotesk', Arial, sans-serif; color: #111111; }
+    .mapboxgl-popup-tip { display: none; }
+    .popup-name { display: block; margin-bottom: 6px; font-size: 13px; }
+    .popup-row { display: flex; justify-content: space-between; gap: 18px; color: #767676; }
+    .popup-row b { font-weight: normal; color: #111111; }
+    @media (max-width: 720px) {
+      body { display: block; }
+      #sidebar { height: auto; padding: 28px 22px 36px; border-right: 0; border-bottom: 1px solid #dddddd; }
+      #map-panel { height: 65vh; min-height: 400px; }
+    }
+  </style>
+</head>
+<body>
+  <aside id="sidebar">
+    <h1>Smart Dashboard</h1>
+    <p id="subtitle">Washington county population, 2000–2020</p>
+    <p id="intro" class="muted">Hover to preview. Click a county to pin it. Click empty map space or outside the map to unpin it.</p>
+    <div class="field-group">
+      <label for="indicator-select">Map indicator</label>
+      <select id="indicator-select">
+        <option value="pop2020">Total population, 2020</option>
+        <option value="growth">Population change, 2000–2020</option>
+      </select>
+    </div>
+    <div class="field-group" id="county-filter">
+      <label for="county-search">Find a county</label>
+      <input id="county-search" type="search" placeholder="Search added in Step 3" autocomplete="off"
+        aria-controls="county-options" aria-expanded="false" aria-describedby="search-status" disabled>
+      <div id="county-options" role="group" aria-label="County search results" hidden></div>
+    </div>
+    <p id="search-status" class="muted" role="status">The search filter will be connected in Step 3.</p>
+    <div id="readout" aria-live="polite">
+      <h2 id="placename">Washington</h2>
+      <p class="muted"><span id="indicator-label">Population in 2020</span> · <span id="selection-mode">All counties</span></p>
+      <p id="county-count">Loading…</p>
+    </div>
+    <div id="chart-block">
+      <h2>Population trend</h2>
+      <div id="county-chart"></div>
+      <p id="chart-note">The linked D3 graph will be connected in Step 4.</p>
+    </div>
+    <div id="footnotes">
+      <p id="status" class="muted" role="status">Loading map and WAcounties.geojson…</p>
+      <p id="map-note" class="muted">Map colors show total population in 2020, not population density. The data are historical; this dashboard is not a live monitoring feed.</p>
+    </div>
+  </aside>
+  <main id="map-panel" aria-label="Washington county population map">
+    <div id="map"></div>
+    <div id="legend"><h2>Population in 2020</h2></div>
+  </main>
+  <script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoibW9zZXN0cnVuZGxlc3RyYWNoYW4iLCJhIjoiY211enZ5aTQ4MDA1NDJ5b3I1bDBlNW5rNSJ9.GztejGQJULxM18icCgEHIw';
+    const map = new mapboxgl.Map({
+      container: 'map', style: 'mapbox://styles/mapbox/light-v11',
+      bounds: [[-124.85, 45.5], [-116.85, 49.05]], fitBoundsOptions: {padding: 30}
+    });
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    map.on('error', function(event) {
+      document.getElementById('status').textContent = 'Map error: check the token and connection.';
+      console.error(event.error);
+    });
+
+    map.on('load', async function() {
+      try {
+        const data = await d3.json('./WAcounties.geojson');
+        const counties = data.features;
+
+        counties.forEach(function(feature) {
+          const start = +feature.properties.POP2000;
+          const end = +feature.properties.POP2020;
+          feature.properties.GROWTH = start > 0 ? ((end - start) / start) * 100 : null;
+        });
+
+        const indicators = {
+          pop2020: {
+            field: 'POP2020',
+            legendTitle: 'Population in 2020',
+            sidebarLabel: 'Population in 2020',
+            mapNote: 'Map colors show total population in 2020, not population density. The data are historical; this dashboard is not a live monitoring feed.',
+            classes: [
+              {min: 0, color: '#edf8fb', label: 'Under 25,000'},
+              {min: 25000, color: '#b3cde3', label: '25,000–99,999'},
+              {min: 100000, color: '#8c96c6', label: '100,000–499,999'},
+              {min: 500000, color: '#8856a7', label: '500,000–999,999'},
+              {min: 1000000, color: '#810f7c', label: '1,000,000 or more'}
+            ],
+            summary: function(features) {
+              if (!features.length) return '—';
+              return d3.format(',')(d3.sum(features, feature => +feature.properties.POP2020));
+            }
+          },
+          growth: {
+            field: 'GROWTH',
+            legendTitle: 'Population change, 2000–2020',
+            sidebarLabel: 'Population change, 2000–2020',
+            mapNote: 'Map colors show the percentage change in population between 2000 and 2020, so a small county can read as high growth on a small base. The data are historical; this dashboard is not a live monitoring feed.',
+            classes: [
+              {min: -100, color: '#f1eef6', label: 'Decline'},
+              {min: 0, color: '#bdc9e1', label: '0–9.9% growth'},
+              {min: 10, color: '#74a9cf', label: '10–24.9% growth'},
+              {min: 25, color: '#2b8cbe', label: '25–49.9% growth'},
+              {min: 50, color: '#045a8d', label: '50% growth or more'}
+            ],
+            summary: function(features) {
+              if (!features.length) return '—';
+              const start = d3.sum(features, feature => +feature.properties.POP2000);
+              const end = d3.sum(features, feature => +feature.properties.POP2020);
+              if (!start) return '—';
+              return d3.format('+.1f')(((end - start) / start) * 100) + '%';
+            }
+          }
+        };
+
+        let activeIndicator = indicators.pop2020;
+
+        function indicatorFillColor(indicator) {
+          const fillColor = ['step', ['get', indicator.field], indicator.classes[0].color];
+          indicator.classes.slice(1).forEach(group => fillColor.push(group.min, group.color));
+          return fillColor;
+        }
+
+        map.addSource('population', {type: 'geojson', data: data});
+        map.addLayer({id: 'county-fill', type: 'fill', source: 'population',
+          paint: {'fill-color': indicatorFillColor(activeIndicator), 'fill-opacity': 0.85}});
+        map.addLayer({id: 'county-border', type: 'line', source: 'population',
+          paint: {'line-color': '#8a8a8a', 'line-width': 0.6}});
+        map.addLayer({id: 'county-focus-halo', type: 'line', source: 'population',
+          filter: ['==', ['get', 'OBJECTID'], -1],
+          paint: {'line-color': '#ffffff', 'line-width': 5}});
+        map.addLayer({id: 'county-focus', type: 'line', source: 'population',
+          filter: ['==', ['get', 'OBJECTID'], -1],
+          paint: {'line-color': '#111111', 'line-width': 1.5}});
+
+        function drawLegend(indicator) {
+          d3.select('#legend h2').text(indicator.legendTitle);
+          const rows = d3.select('#legend').selectAll('.legend-row')
+            .data(indicator.classes).join('div').attr('class', 'legend-row');
+          rows.selectAll('*').remove();
+          rows.append('span').attr('class', 'swatch').style('background-color', d => d.color);
+          rows.append('span').text(d => d.label);
+        }
+        drawLegend(activeIndicator);
+
+        let matchingCounties = counties;
+        let hoveredCounty = null;
+        let selectedCounty = null;
+        let highlightCounties = function(features) {};
+        let updateLinkedChart = function(features) {};
+
+        function areaLabel(features) {
+          if (!features.length) return 'No matching counties';
+          if (features.length === counties.length) return 'Washington';
+          if (features.length === 1) return features[0].properties.NAMELSAD10;
+          return 'Matching counties (' + features.length + ')';
+        }
+
+        function updateDashboard() {
+          const features = selectedCounty ? [selectedCounty]
+            : hoveredCounty ? [hoveredCounty] : matchingCounties;
+          document.getElementById('placename').textContent = areaLabel(features);
+          document.getElementById('county-count').textContent = activeIndicator.summary(features);
+          document.getElementById('indicator-label').textContent = activeIndicator.sidebarLabel;
+          document.getElementById('selection-mode').textContent = selectedCounty ? 'Pinned county'
+            : hoveredCounty ? 'Hover preview' : features.length === counties.length ? 'All counties' : 'Search results';
+          highlightCounties(features);
+          updateLinkedChart(features);
+        }
+
+        highlightCounties = function(features) {
+          const ids = features.map(feature => feature.properties.OBJECTID);
+          const isInput = ['in', ['get', 'OBJECTID'], ['literal', ids]];
+          const showAll = features.length === counties.length;
+          map.setPaintProperty('county-fill', 'fill-opacity',
+            showAll ? 0.85 : ['case', isInput, 0.9, 0.12]);
+          map.setPaintProperty('county-border', 'line-opacity',
+            showAll ? 1 : ['case', isInput, 1, 0.2]);
+          const focusFilter = showAll ? ['==', ['get', 'OBJECTID'], -1] : isInput;
+          map.setFilter('county-focus-halo', focusFilter);
+          map.setFilter('county-focus', focusFilter);
+        };
+
+        function countyById(objectId) {
+          return counties.find(feature => feature.properties.OBJECTID === objectId);
+        }
+
+        function countyFromHit(hit) {
+          if (!hit) return null;
+          const match = countyById(hit.properties.OBJECTID);
+          return match && matchingCounties.includes(match) ? match : null;
+        }
+
+        const hoverPopup = new mapboxgl.Popup({closeButton: false, closeOnClick: false, offset: 10});
+
+        function popupHtml(feature) {
+          const growth = feature.properties.GROWTH;
+          return '<span class="popup-name">' + feature.properties.NAMELSAD10 + '</span>'
+            + '<span class="popup-row">Population 2020<b>' + d3.format(',')(+feature.properties.POP2020) + '</b></span>'
+            + '<span class="popup-row">Population 2000<b>' + d3.format(',')(+feature.properties.POP2000) + '</b></span>'
+            + '<span class="popup-row">Change since 2000<b>'
+            + (growth === null ? 'not available' : d3.format('+.1f')(growth) + '%') + '</b></span>';
+        }
+
+        map.on('mousemove', 'county-fill', function(event) {
+          map.getCanvas().style.cursor = 'pointer';
+          const hit = event.features[0];
+          const match = countyById(hit.properties.OBJECTID);
+          if (match) hoverPopup.setLngLat(event.lngLat).setHTML(popupHtml(match)).addTo(map);
+          if (selectedCounty) return;
+          const preview = countyFromHit(hit);
+          if (preview === hoveredCounty) return;
+          hoveredCounty = preview;
+          updateDashboard();
+        });
+
+        map.on('mouseleave', 'county-fill', function() {
+          map.getCanvas().style.cursor = '';
+          hoverPopup.remove();
+          if (selectedCounty || !hoveredCounty) return;
+          hoveredCounty = null;
+          updateDashboard();
+        });
+
+        map.on('click', function(event) {
+          const hits = map.queryRenderedFeatures(event.point, {layers: ['county-fill']});
+          selectedCounty = countyFromHit(hits[0]);
+          hoveredCounty = null;
+          updateDashboard();
+        });
+
+        const searchInput = document.getElementById('county-search');
+        const optionsPanel = document.getElementById('county-options');
+        const searchStatus = document.getElementById('search-status');
+        searchInput.disabled = false;
+        searchInput.placeholder = 'Type part of a county name';
+
+        function setOptionsOpen(open) {
+          const show = open && matchingCounties.length > 0;
+          optionsPanel.hidden = !show;
+          searchInput.setAttribute('aria-expanded', String(show));
+        }
+
+        function previewCounty(feature) {
+          if (selectedCounty || hoveredCounty === feature) return;
+          hoveredCounty = feature;
+          updateDashboard();
+        }
+
+        function clearPreview() {
+          if (selectedCounty || !hoveredCounty) return;
+          hoveredCounty = null;
+          updateDashboard();
+        }
+
+        function buildOptions() {
+          optionsPanel.innerHTML = '';
+          matchingCounties.forEach(function(feature, index) {
+            const option = document.createElement('button');
+            option.type = 'button';
+            option.textContent = d3.format('02d')(index + 1) + '.  ' + feature.properties.NAMELSAD10;
+            option.addEventListener('mouseenter', function() { previewCounty(feature); });
+            option.addEventListener('focus', function() { previewCounty(feature); });
+            option.addEventListener('mouseleave', clearPreview);
+            option.addEventListener('blur', clearPreview);
+            option.addEventListener('click', function() {
+              selectedCounty = feature;
+              hoveredCounty = null;
+              setOptionsOpen(false);
+              updateDashboard();
+            });
+            optionsPanel.appendChild(option);
+          });
+        }
+
+        function runSearch(openOptions) {
+          const typed = searchInput.value.trim();
+          const query = typed.toLowerCase();
+          matchingCounties = query
+            ? counties.filter(feature => feature.properties.NAMELSAD10.toLowerCase().includes(query))
+            : counties;
+          selectedCounty = null;
+          hoveredCounty = null;
+          searchStatus.textContent = !query
+            ? 'Showing all ' + counties.length + ' counties.'
+            : matchingCounties.length
+              ? matchingCounties.length + ' of ' + counties.length + ' counties match "' + typed + '".'
+              : 'No counties match "' + typed + '". Clear the search to return to all counties.';
+          buildOptions();
+          setOptionsOpen(openOptions);
+          updateDashboard();
+        }
+
+        searchInput.addEventListener('input', function() { runSearch(true); });
+        searchInput.addEventListener('focus', function() { setOptionsOpen(true); });
+        searchInput.addEventListener('keydown', function(event) {
+          if (event.key !== 'Escape') return;
+          setOptionsOpen(false);
+          searchInput.blur();
+        });
+
+        document.addEventListener('click', function(event) {
+          if (event.target.closest('#county-filter')) return;
+          setOptionsOpen(false);
+          if (event.target.closest('#map-panel') || !selectedCounty) return;
+          selectedCounty = null;
+          updateDashboard();
+        });
+
+        document.getElementById('indicator-select').addEventListener('change', function(event) {
+          activeIndicator = indicators[event.target.value];
+          map.setPaintProperty('county-fill', 'fill-color', indicatorFillColor(activeIndicator));
+          drawLegend(activeIndicator);
+          document.getElementById('map-note').textContent = activeIndicator.mapNote;
+          updateDashboard();
+        });
+
+        const chartNote = document.getElementById('chart-note');
+        const years = d3.range(2000, 2021);
+        const box = {width: 340, height: 210, top: 14, right: 12, bottom: 30, left: 56};
+        const chartSvg = d3.select('#county-chart').append('svg')
+          .attr('viewBox', '0 0 ' + box.width + ' ' + box.height)
+          .attr('role', 'img')
+          .attr('aria-label', 'Annual population of the selected counties, 2000 to 2020');
+        const xScale = d3.scaleLinear().domain([2000, 2020]).range([box.left, box.width - box.right]);
+        const yScale = d3.scaleLinear().range([box.height - box.bottom, box.top]);
+        const xAxisGroup = chartSvg.append('g')
+          .attr('transform', 'translate(0,' + (box.height - box.bottom) + ')');
+        const yAxisGroup = chartSvg.append('g')
+          .attr('transform', 'translate(' + box.left + ',0)');
+        const trendLine = chartSvg.append('path')
+          .attr('fill', 'none').attr('stroke', '#111111').attr('stroke-width', 1.5);
+        const trendDots = chartSvg.append('g');
+
+        updateLinkedChart = function(features) {
+          if (!features.length) {
+            chartSvg.style('display', 'none');
+            chartNote.textContent = 'No counties are in the current input, so there is no trend to draw.';
+            return;
+          }
+          chartSvg.style('display', 'block');
+          const points = years.map(function(year) {
+            return {year: year, population: d3.sum(features, feature => +feature.properties['POP' + year])};
+          });
+          yScale.domain([0, d3.max(points, point => point.population)]).nice();
+          xAxisGroup.call(d3.axisBottom(xScale)
+            .tickValues([2000, 2005, 2010, 2015, 2020]).tickFormat(d3.format('d')));
+          yAxisGroup.call(d3.axisLeft(yScale).ticks(4).tickFormat(d3.format('.2s')));
+          trendLine.datum(points).attr('d', d3.line()
+            .x(point => xScale(point.year)).y(point => yScale(point.population)));
+          trendDots.selectAll('circle').data(points).join('circle')
+            .attr('r', 2).attr('fill', '#111111')
+            .attr('cx', point => xScale(point.year))
+            .attr('cy', point => yScale(point.population));
+          chartNote.textContent = areaLabel(features) + ': '
+            + d3.format(',')(points[0].population) + ' in 2000 to '
+            + d3.format(',')(points[points.length - 1].population) + ' in 2020.';
+        };
+
+        runSearch(false);
+        updateDashboard();
+        document.getElementById('status').textContent = counties.length + ' counties loaded.';
+      } catch (error) {
+        document.getElementById('status').textContent = 'Unable to load dashboard: ' + error.message;
+        console.error(error);
+      }
+    });
+  </script>
+</body>
+</html>
